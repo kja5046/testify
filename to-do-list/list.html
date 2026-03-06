@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compact Pastel To-Do List</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            /* 기본 테마: 핑크 */
+            --theme-primary: #ffcada;
+            --theme-light: #fff9fb;
+            --theme-border: #ffdce5;
+            --theme-text: #ff9fb8;
+            --text-main: #777;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--theme-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            transition: background-color 0.5s ease;
+        }
+
+        .todo-container {
+            width: 310px;
+            background: white;
+            border: 2px solid var(--theme-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: border-color 0.3s;
+            /* 최소 높이와 최대 높이를 지정하여 스크롤 영역 확보 */
+            min-height: 200px;
+            max-height: 500px;
+        }
+
+        /* 헤더 섹션 */
+        .header {
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--theme-light);
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--theme-text);
+            transition: color 0.3s;
+        }
+
+        .header-title {
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: -0.5px;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 8px;
+            color: var(--theme-text);
+        }
+
+        .header-icon-btn {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 4px;
+            border: 1.5px solid var(--theme-border);
+            border-radius: 6px;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        /* 입력 섹션 */
+        .input-section {
+            padding: 8px 18px 14px;
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .task-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1.5px solid var(--theme-border);
+            border-radius: 10px;
+            outline: none;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .task-input:focus {
+            border-color: var(--theme-primary);
+        }
+
+        .add-btn {
+            background: white;
+            border: 1.5px solid var(--theme-border);
+            color: var(--theme-text);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        /* 리스트 섹션 - 스크롤 가능하도록 수정 */
+        .todo-list {
+            padding: 0 18px 14px 18px;
+            overflow-y: auto;
+            flex: 1; /* 남은 공간을 차지하도록 설정 */
+            scrollbar-width: thin;
+            scrollbar-color: var(--theme-border) transparent;
+        }
+
+        /* 스크롤바 커스텀 */
+        .todo-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        .todo-list::-webkit-scrollbar-thumb {
+            background: var(--theme-border);
+            border-radius: 10px;
+        }
+        .todo-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .todo-item {
+            background: white;
+            border: 1.5px solid #f5f5f5;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.2s, opacity 0.2s, background 0.3s, border 0.3s;
+        }
+
+        .todo-item.dragging {
+            opacity: 0.6;
+            background: var(--theme-light);
+            border: 2px dashed var(--theme-primary);
+            transform: scale(0.98);
+        }
+
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--theme-border);
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+
+        .checkbox.checked {
+            background-color: var(--theme-primary);
+            border-color: var(--theme-primary);
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .task-text {
+            flex: 1;
+            color: #555;
+            font-size: 0.9rem;
+            pointer-events: none;
+            word-break: break-all;
+        }
+
+        .task-text.completed {
+            text-decoration: line-through;
+            color: #ddd;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .action-btn {
+            cursor: pointer;
+            color: #eee;
+            display: flex;
+            align-items: center;
+            padding: 4px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+
+        .action-btn.heart.active {
+            color: var(--theme-text);
+        }
+
+        .action-btn.heart.active svg {
+            fill: currentColor;
+        }
+
+        /* 푸터 섹션 */
+        .footer {
+            padding: 12px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #bbb;
+            letter-spacing: 0.5px;
+            border-top: 1px solid var(--theme-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .settings-btn {
+            position: absolute;
+            right: 15px;
+            cursor: pointer;
+            color: #eee;
+        }
+
+        /* 설정 패널 */
+        .settings-panel {
+            position: absolute;
+            bottom: 45px;
+            right: 15px;
+            background: white;
+            border: 2px solid var(--theme-border);
+            border-radius: 14px;
+            padding: 12px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            z-index: 100;
+        }
+
+        .settings-panel.active {
+            display: flex;
+        }
+
+        .color-options {
+            display: flex;
+            gap: 8px;
+        }
+
+        .color-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 0 1px #eee;
+        }
+        
+        .color-dot.active {
+            box-shadow: 0 0 0 2px var(--theme-text);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="todo-container">
+        <!-- 헤더 -->
+        <div class="header">
+            <div class="header-left">
+                <i data-lucide="list-todo" size="18"></i>
+                <span class="header-title">to do list</span>
+            </div>
+            <div class="header-icons">
+                <div class="header-icon-btn" id="resetBtn" title="전체 삭제">
+                    <i data-lucide="trash-2" size="14"></i>
+                </div>
+                <div class="header-icon-btn" title="닫기">
+                    <i data-lucide="x" size="14"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 입력부 -->
+        <div class="input-section">
+            <input type="text" id="taskInput" class="task-input" placeholder="할 일 추가..." autocomplete="off">
+            <button class="add-btn" id="addBtn">
+                <i data-lucide="plus" size="24"></i>
+            </button>
+        </div>
+
+        <!-- 리스트 영역 -->
+        <div class="todo-list" id="todoList"></div>
+
+        <!-- 설정 패널 -->
+        <div class="settings-panel" id="settingsPanel">
+            <div style="font-size: 0.65rem; color: #aaa; margin-bottom: 2px; font-weight: bold;">THEME COLOR</div>
+            <div class="color-options">
+                <div class="color-dot" data-color="#ffcada" data-light="#fffafa" data-border="#ffdce5" data-text="#ff9fb8" style="background: #ffcada;"></div>
+                <div class="color-dot" data-color="#d9c5ff" data-light="#fbf9ff" data-border="#e8daff" data-text="#b493ff" style="background: #d9c5ff;"></div>
+                <div class="color-dot" data-color="#c5e1ff" data-light="#f9fbff" data-border="#d6eaff" data-text="#85bcff" style="background: #c5e1ff;"></div>
+                <div class="color-dot" data-color="#ffccaa" data-light="#fffbf8" data-border="#ffddc5" data-text="#ff9c55" style="background: #ffccaa;"></div>
+                <div class="color-dot" data-color="#ffedb3" data-light="#fffef8" data-border="#fff2cc" data-text="#d4b413" style="background: #ffedb3;"></div>
+            </div>
+        </div>
+
+        <!-- 푸터 -->
+        <div class="footer">
+            오늘도 잘 부탁해
+            <div class="settings-btn" id="settingsBtn">
+                <i data-lucide="settings" size="16"></i>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('taskInput');
+        const list = document.getElementById('todoList');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const addBtn = document.getElementById('addBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let tasks = JSON.parse(localStorage.getItem('compact_todo_data') || '[]');
+        let currentTheme = JSON.parse(localStorage.getItem('compact_todo_theme') || '{"primary":"#ffcada","light":"#fffafa","border":"#ffdce5","text":"#ff9fb8"}');
+
+        function init() {
+            applyTheme(currentTheme.primary, currentTheme.light, currentTheme.border, currentTheme.text);
+            renderTasks();
+            lucide.createIcons();
+        }
+
+        function applyTheme(primary, light, border, text) {
+            document.documentElement.style.setProperty('--theme-primary', primary);
+            document.documentElement.style.setProperty('--theme-light', light);
+            document.documentElement.style.setProperty('--theme-border', border);
+            document.documentElement.style.setProperty('--theme-text', text);
+            document.body.style.backgroundColor = light;
+            
+            document.querySelectorAll('.color-dot').forEach(dot => {
+                dot.classList.toggle('active', dot.dataset.color === primary);
+            });
+            
+            currentTheme = { primary, light, border, text };
+            localStorage.setItem('compact_todo_theme', JSON.stringify(currentTheme));
+        }
+
+        function renderTasks() {
+            list.innerHTML = '';
+            if (tasks.length === 0) {
+                list.innerHTML = `<div style="text-align:center; padding-top:20px; padding-bottom:20px; color:#ddd; font-size:0.8rem;">비어 있음</div>`;
+                return;
+            }
+
+            tasks.forEach(task => {
+                const item = document.createElement('div');
+                item.className = 'todo-item';
+                item.draggable = true;
+                item.dataset.id = task.id;
+                item.innerHTML = `
+                    <div class="checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTask('${task.id}')"></div>
+                    <div class="task-text ${task.completed ? 'completed' : ''}">${task.text}</div>
+                    <div class="item-actions">
+                        <div class="action-btn heart ${task.isFavorite ? 'active' : ''}" onclick="toggleHeart('${task.id}')">
+                            <i data-lucide="heart" size="16"></i>
+                        </div>
+                        <div class="action-btn delete" onclick="deleteTask('${task.id}')">
+                            <i data-lucide="x" size="14"></i>
+                        </div>
+                    </div>
+                `;
+                addDragEvents(item);
+                list.appendChild(item);
+            });
+            lucide.createIcons();
+            localStorage.setItem('compact_todo_data', JSON.stringify(tasks));
+        }
+
+        window.addTask = () => {
+            const text = input.value.trim();
+            if (!text) return;
+            tasks.push({ id: Date.now().toString(), text, completed: false, isFavorite: false });
+            input.value = '';
+            renderTasks();
+            // 추가 후 스크롤을 아래로 내림
+            setTimeout(() => {
+                list.scrollTop = list.scrollHeight;
+            }, 50);
+        };
+
+        window.toggleTask = (id) => {
+            tasks = tasks.map(t => t.id === id ? {...t, completed: !t.completed} : t);
+            renderTasks();
+        };
+
+        window.toggleHeart = (id) => {
+            tasks = tasks.map(t => t.id === id ? {...t, isFavorite: !t.isFavorite} : t);
+            renderTasks();
+        };
+
+        window.deleteTask = (id) => {
+            tasks = tasks.filter(t => t.id !== id);
+            renderTasks();
+        };
+
+        addBtn.addEventListener('click', window.addTask);
+        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.addTask(); });
+        settingsBtn.addEventListener('click', () => settingsPanel.classList.toggle('active'));
+        
+        resetBtn.addEventListener('click', () => {
+            if (tasks.length > 0 && confirm("모든 기록을 삭제할까요?")) {
+                tasks = [];
+                renderTasks();
+            }
+        });
+
+        document.querySelectorAll('.color-dot').forEach(dot => {
+            dot.addEventListener('click', () => {
+                const { color, light, border, text } = dot.dataset;
+                applyTheme(color, light, border, text);
+            });
+        });
+
+        function addDragEvents(item) {
+            item.addEventListener('dragstart', () => item.classList.add('dragging'));
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+                const currentItems = [...list.querySelectorAll('.todo-item')];
+                const newTasks = currentItems.map(node => {
+                    const id = node.dataset.id;
+                    return tasks.find(t => t.id === id);
+                }).filter(t => t);
+                tasks = newTasks;
+                localStorage.setItem('compact_todo_data', JSON.stringify(tasks));
+            });
+        }
+
+        list.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const draggingItem = document.querySelector('.dragging');
+            const siblings = [...list.querySelectorAll('.todo-item:not(.dragging)')];
+            const nextSibling = siblings.find(sibling => {
+                return e.clientY <= sibling.getBoundingClientRect().top + sibling.getBoundingClientRect().height / 2;
+            });
+            list.insertBefore(draggingItem, nextSibling);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!settingsPanel.contains(e.target) && !settingsBtn.contains(e.target)) {
+                settingsPanel.classList.remove('active');
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
